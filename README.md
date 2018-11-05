@@ -8,3 +8,6 @@ This *repository* is called `FRC-Jetson-Telem` due to the organizational system 
 ```
 git clone https://github.com/carlosgj/FRC-Jetson-Telem.git jetson_telem
 ```
+## Usage
+Clone and build with Catkin as normal. 
+Invoke with `rosrun jetson_telem JetsonTelem.py`. Arguments are not currently supported (fixing this is issue #1). 
