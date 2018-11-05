@@ -6,6 +6,5 @@ Note that I work at JPL, and as such approach telemetry with a JPL philosophy. T
 
 This *repository* is called `FRC-Jetson-Telem` due to the organizational system I use for my GitHub repos. However, the actual ROS package is named `jetson_telem`. Therefore, to avoid confusion, I recommend something like:
 ```
-git clone https://github.com/carlosgj/FRC-Jetson-Telem.git
-mv FRC-Jetson-Telem jetson_telem
+git clone https://github.com/carlosgj/FRC-Jetson-Telem.git jetson_telem
 ```
