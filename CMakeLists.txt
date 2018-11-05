@@ -51,6 +51,7 @@ add_message_files(
   FILES
   CPU.msg
   Thermal.msg
+  Power.msg
  )
 
 ## Generate services in the 'srv' folder

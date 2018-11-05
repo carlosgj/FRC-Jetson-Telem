@@ -4,7 +4,7 @@ import os
 
 import rospy
 from std_msgs.msg import String
-from jetson_telem.msg import CPU, Thermal
+from jetson_telem.msg import CPU, Thermal, Power
 
 class TelemetryTracker():
     def __init__(self):
@@ -92,9 +92,60 @@ class TelemetryTracker():
             zoneTemps.append(zTemp)
         return zoneTemps
 
+    def getPowerSysfsPath(self):
+        basedir = None
+        if os.path.exists("/sys/devices/7000c400.i2c/i2c-1/1-0040/iio_device"):
+            #This one works for me
+            basedir = "/sys/devices/7000c400.i2c/i2c-1/1-0040/iio_device"
+        elif os.path.exists("/sys/devices/platform/7000c400.i2c/i2c-1/1-0040/iio_device/"):
+            #Specified in https://devtalk.nvidia.com/default/topic/950341/jetson-tx1/jetson-tx1-ina226-power-monitor-with-i2c-interface-/post/4998393/
+            basedir = "/sys/devices/platform/7000c400.i2c/i2c-1/1-0040/iio_device/"
+        else:
+            rospy.logwarn("Couldn't find power sysfs nodes.")
+
+        return basedir
+
+
+    def getPowerBusNames(self):
+        names = []
+        basedir = self.getPowerSysfsPath()
+        if basedir:
+            for i in range(3):
+                with open(os.path.join(basedir, "rail_name_%d"%i)) as file:
+                    name = file.read().strip()
+                    names.append(name)
+        return names
+
+    def getPowerBusVoltages(self):
+        voltages = []
+        basedir = self.getPowerSysfsPath()
+        if basedir:
+            for i in range(3):
+                with open(os.path.join(basedir, "in_voltage%d_input"%i)) as file:
+                    voltageStr = file.read().strip()
+                    voltage = float(voltageStr)
+                    voltage /= 1000.
+                    voltages.append(voltage)
+        return voltages
+
+    def getPowerBusCurrents(self):
+        currents = []
+        basedir = self.getPowerSysfsPath()
+        if basedir:
+            for i in range(3):
+                with open(os.path.join(basedir, "in_current%d_input"%i)) as file:
+                    currentStr = file.read().strip()
+                    current = float(currentStr)
+                    current /= 1000.
+                    currents.append(current)
+        return currents
+
+
 def talker():
     cpupub = rospy.Publisher('jetson/cpu', CPU, queue_size=10)
     thermpub = rospy.Publisher('jetson/thermal', Thermal, queue_size=10)
+    powerpub = rospy.Publisher('jetson/power', Power, queue_size=10)
+
     rospy.init_node('jetson', anonymous=True)
     rate = rospy.Rate(5)
     this = TelemetryTracker()
@@ -117,6 +168,18 @@ def talker():
         thisThermMsg.ThermalZoneNames = tZoneTypes
         thisThermMsg.ThermalZoneTemps = tZoneTemps
         thermpub.publish(thisThermMsg)
+
+        busNames = this.getPowerBusNames()
+        busVoltages = this.getPowerBusVoltages()
+        busCurrents = this.getPowerBusCurrents()
+        rospy.loginfo("Power rail names: %s"%busNames)
+        rospy.loginfo("Power rail voltages: %s"%busVoltages)
+        rospy.loginfo("Power rail currents: %s"%busCurrents)
+        thisPowerMsg = Power()
+        thisPowerMsg.PowerBusNames = busNames
+        thisPowerMsg.PowerBusVoltages = busVoltages
+        thisPowerMsg.PowerBusCurrents = busCurrents
+        powerpub.publish(thisPowerMsg)
 
         rate.sleep()
 

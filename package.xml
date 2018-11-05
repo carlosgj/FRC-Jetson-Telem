@@ -2,7 +2,7 @@
 <package format="2">
   <name>jetson_telem</name>
   <version>0.0.1</version>
-  <description>The jetson_telem package</description>
+  <description>Retrieves and publishes "housekeeping" information (CPU/GPU speeds, utilization, temperatures, power consumption, etc.).</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
