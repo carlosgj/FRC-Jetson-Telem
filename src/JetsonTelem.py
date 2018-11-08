@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 
 import os
-
+import glob
 import rospy
 from std_msgs.msg import String
-from jetson_telem.msg import CPU, Thermal, Power
+from jetson_telem.msg import CPU, GPU, Thermal, Power
 
 class TelemetryTracker():
     def __init__(self):
         self.lastCPUTotals = None
         self.lastCPULoads = None
         self.cpuCount = self.getCPUCount()
+        self.gpuCount = self.getGPUCount()
+
     def getCPUCount(self):
         cpucount = 0
         with open("/proc/cpuinfo") as file:
@@ -140,12 +142,34 @@ class TelemetryTracker():
                     currents.append(current)
         return currents
 
+    def getGPUCount(self):
+        files = glob.glob("/sys/devices/gpu.*")
+        return len(files)
+
+    def getGPULoads(self):
+        loads = []
+        for i in range(self.gpuCount):
+            with open("/sys/devices/gpu.%d/load"%i) as file:
+                loadStr = file.read()
+                load = float(loadStr)
+                load /= 1000 #Convert to real (not percentage)
+                loads.append(load)
+        return loads
+
+    def getGPUSpeeds(self):
+        speeds = []
+        for i in range(self.gpuCount):
+            with open("/sys/devices/gpu.%d/devfreq/57000000.gpu/cur_freq"%i) as file:
+                speedStr = file.read()
+                speed = float(speedStr)
+                speeds.append(speed)
+        return speeds
 
 def talker():
     cpupub = rospy.Publisher('jetson/cpu', CPU, queue_size=10)
     thermpub = rospy.Publisher('jetson/thermal', Thermal, queue_size=10)
     powerpub = rospy.Publisher('jetson/power', Power, queue_size=10)
-
+    gpupub = rospy.Publisher('jetson/gpu', GPU, queue_size=10)
     rospy.init_node('jetson', anonymous=True)
     rate = rospy.Rate(5)
     this = TelemetryTracker()
@@ -180,6 +204,15 @@ def talker():
         thisPowerMsg.PowerBusVoltages = busVoltages
         thisPowerMsg.PowerBusCurrents = busCurrents
         powerpub.publish(thisPowerMsg)
+
+        gpuUsages = this.getGPULoads()
+        gpuSpeeds = this.getGPUSpeeds()
+        rospy.loginfo("GPU speeds: %s"%gpuSpeeds)
+        rospy.loginfo("GPU usages: %s"%gpuUsages)
+        thisGPUMsg = GPU()
+        thisGPUMsg.GPUspeeds = gpuSpeeds
+        thisGPUMsg.GPUusages = gpuUsages
+        gpupub.publish(thisGPUMsg)
 
         rate.sleep()
 
