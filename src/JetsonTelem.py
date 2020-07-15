@@ -100,6 +100,9 @@ class TelemetryTracker():
         elif os.path.exists("/sys/devices/platform/7000c400.i2c/i2c-1/1-0040/iio_device/"):
             #Specified in https://devtalk.nvidia.com/default/topic/950341/jetson-tx1/jetson-tx1-ina226-power-monitor-with-i2c-interface-/post/4998393/
             basedir = "/sys/devices/platform/7000c400.i2c/i2c-1/1-0040/iio_device/"
+        elif os.path.exists("/sys/bus/i2c/drivers/ina3221x/6-0040/iio:device0"):
+            #For Jetson Nano
+            basedir = "/sys/bus/i2c/drivers/ina3221x/6-0040/iio:device0"
         else:
             rospy.logwarn("Couldn't find power sysfs nodes.")
 
@@ -139,6 +142,19 @@ class TelemetryTracker():
                     current /= 1000.
                     currents.append(current)
         return currents
+
+    def getCoralTemp(self):
+        rootdir = "/sys/class/apex/"
+        if os.path.exists(rootdir):
+            #TODO: support multiple Corals
+            basedir = os.path.join(rootdir, "apex_0")
+            with open(os.path.join(basedir, "temp")) as file:
+                tempStr = file.read().strip()
+                temp = float(tempStr)
+                temp /= 1000.
+                return temp
+        else:
+            return None
 
 
 def talker():
@@ -180,6 +196,10 @@ def talker():
         thisPowerMsg.PowerBusVoltages = busVoltages
         thisPowerMsg.PowerBusCurrents = busCurrents
         powerpub.publish(thisPowerMsg)
+
+        coralTemp = this.getCoralTemp()
+        if coralTemp is not None:
+            rospy.loginfo("Coral temp: %s"%coralTemp)
 
         rate.sleep()
 
